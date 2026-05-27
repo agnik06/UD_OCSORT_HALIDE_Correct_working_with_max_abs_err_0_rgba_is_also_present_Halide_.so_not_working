@@ -1,0 +1,47 @@
+# Project Specific
+.vscode
+image_segmentation/bin
+image_segmentation/build
+image_segmentation/libs
+image_segmentation/docs
+models
+tags
+MON.sym
+android/applications/SceneOptimizerPro/.idea/*
+android/applications/SceneOptimizerPro/.idea/*
+android/applications/SceneOptimizerPro/image_segmenter/src/main/jniLibs/arm64-v8a/*.so
+android/deploy-tools/apps
+android/deploy-tools/libs
+android/deploy-tools/models
+android/deploy-tools/releases
+tags/
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+*.vscode
+# Except folders
+!image_segmentation/third_party/*/libs/*/*
+!android/image_segmentation/third_party/*/libs/*/*

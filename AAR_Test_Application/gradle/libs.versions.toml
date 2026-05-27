@@ -1,0 +1,19 @@
+[versions]
+androidGradlePlugin = "8.2.0"
+androidxAppcompat = "1.6.1"
+androidxMaterial = "1.11.0"
+androidxConstraintLayout = "2.1.4"
+junit = "4.13.2"
+androidxTestJunit = "1.1.5"
+androidxEspresso = "3.5.1"
+
+[libraries]
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppcompat" }
+androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidxMaterial" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidxConstraintLayout" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-espresso = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "androidxEspresso" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }

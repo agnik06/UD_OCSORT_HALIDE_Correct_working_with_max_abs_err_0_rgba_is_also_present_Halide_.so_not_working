@@ -1,0 +1,3 @@
+/data/Himadri/work-2021/Engines/AF_Segmenter/Scene_Segmenter/image_segmentation/test/test_wall.jpg
+/data/Himadri/work-2022/Engines/Night_mode/SemanticMap_Segmenter/Scene_Segmenter/image_segmentation/test/Greenery.jpg
+/data/Himadri/work-2022/Engines/Night_mode/SemanticMap_Segmenter/Scene_Segmenter/image_segmentation/test/Sky.jpg

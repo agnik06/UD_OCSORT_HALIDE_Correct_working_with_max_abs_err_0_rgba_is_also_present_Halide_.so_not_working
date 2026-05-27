@@ -1,0 +1,96 @@
+Steps to use the unified_detector API's
+-----------------------------------------------------------------
+unified_detector.h contains the API's exported can be used by the app.
+
+1) While laucnhing the app need to intitialize the models. 
+To do that need call the API initialize with UNIFIED_DETECTOR_MODE Mode and char* model_path
+        In Intialization need to call Create() to get the UnifiedDetector
+        ex : unified_detector::UnifiedDetector* unified_detector_instance = unified_detector::UnifiedDetector::Create();
+        
+        bool initialize(UNIFIED_DETECTOR_MODE mode, char* model_base_path); 
+        Create the UNIFIED_DETECTOR_MODE to pass the Mode
+        UNIFIED_DETECTOR_MODE params;
+		params.mode = static_cast<UNIFIED_DETECTOR_MODE::Mode>(0);
+        model_base_path is /vendor/saiv/image_understanding/db/
+        ex:  bool init_status = unified_detector_instance->initialize(mode, model_base_path);
+
+2) To run the model for image need to call the API 
+execute with arguments UNIFIED_DETECTOR_MODE mode, UNIFIED_DETECTOR_EXECUTE_PARAM param
+    Create the UNIFIED_DETECTOR_MODE to pass the Mode
+    UNIFIED_DETECTOR_MODE params;
+	params.mode = static_cast<UNIFIED_DETECTOR_MODE::Mode>(0);
+
+    create UNIFIED_DETECTOR_EXECUTE_PARAM to pass the image buffer, image format, rotation, width, height and zoom type
+    UNIFIED_DETECTOR_EXECUTE_PARAM execute_param;
+    execute_param.imageFormat = static_cast<UNIFIED_DETECTOR_EXECUTE_PARAM::ImageFormat>(0); //ImageFormat either NV21 or RGBA. for NV21 value 0 and for RGBA value 2
+    execute_param.image_rotation = 0;  // image_rotation angular rotation of the image.
+    execute_param.zoom_type = 0;    // Image data is zoomed data or normal data
+    execute_param.width = 1000;    //width is image width 
+    execute_param.height = 1000;   //height is image height
+    execute_param.image_buffer = bitmap_bytes; //image_buffer is byte array of image
+    bool execute(params, execute_param);
+       ex : unified_detector_instance->execute(params, execute_param);
+
+3) To get detected boxes call the API get_n_tags
+        ex: int count = unified_detector_instance->get_n_tags(1);
+
+4) To get the detected boxes info call the call the API get_tag_info
+	with arguments unified_detector::UnifiedDetector::TagInfo array.
+	
+	Create the unified_detector::UnifiedDetector::TagInfo Array 
+		ex: unified_detector::UnifiedDetector::TagInfo tag_info[count];	// Count is the number returned by API get_n_tags in step 3
+	Call the API get_artifact_info
+		ex: unified_detector_instance->get_tag_info(tag_info);
+		
+        
+4) To destory the unified_detector_instance while closing,
+ the app needs to call the Destroy api with argument unified_detector_instance
+        Destroy(UnifiedDetector* unified_detector_instance);
+        ex: unified_detector::UnifiedDetector::Destroy(unified_detector_instance);
+        
+
+Sequences of API calls
+------------------------------------------------------------------------------------------------
+Please use the API's in the below mentioned order.
+
+1) To get the UnifiedDetector
+        std::shared_ptr<unified_detector::UnifiedDetector> unified_detector_instance(unified_detector::UnifiedDetector::Create(), unified_detector::UnifiedDetector::Destroy); 
+
+2) To Intialize the models
+        bool init_status = unified_detector_instance->initialize(unified_detector::UnifiedDetector::Mode::OD (char*)"models/");                                
+    std::cout<<"Init status: "<<init_status<<"\n";
+    if(!init_status){
+        std::cerr<<"Initialization of Unified Detector failed\n";
+    }
+        
+
+3) To Execute the Model        
+        cv::Mat image = cv::imread(image_path);                                
+    char* image_buffer = reinterpret_cast<char*> (image.data);
+    UNIFIED_DETECTOR_MODE params;
+	params.mode = static_cast<UNIFIED_DETECTOR_MODE::Mode>(0);
+
+    create UNIFIED_DETECTOR_EXECUTE_PARAM to pass the image buffer, image format, rotation, width, height and zoom type
+    UNIFIED_DETECTOR_EXECUTE_PARAM execute_param;
+    execute_param.imageFormat = static_cast<UNIFIED_DETECTOR_EXECUTE_PARAM::ImageFormat>(0); //ImageFormat either NV21 or RGBA. for NV21 value 0 and for RGBA value 2
+    execute_param.image_rotation = 0;  // image_rotation angular rotation of the image.
+    execute_param.zoom_type = 0;    // Image data is zoomed data or normal data
+    execute_param.width = 1000;    //width is image width 
+    execute_param.height = 1000;   //height is image height
+    execute_param.image_buffer = image_buffer; //image_buffer is byte array of image
+    bool execute_status = unified_detector_instance->execute(params, execute_param);
+    std::cout<<"Execute status: "<<execute_status<<"\n";
+    if(!execute_status){
+        std::cerr<<"Execution of Unified Detector failed\n";
+    }
+	
+4) To get the total numnber detected boxes
+	int count = unified_detector_instance->get_n_tags(1);
+
+5) To get the detected boes info
+	unified_detector::UnifiedDetector::TagInfo tag_info[count];
+	unified_detector_instance->get_tag_info(tag_info);
+	
+
+6) To release/destroy the UnifiedDetector        
+    unified_detector::UnifiedDetector::Destroy(unified_detector_instance);

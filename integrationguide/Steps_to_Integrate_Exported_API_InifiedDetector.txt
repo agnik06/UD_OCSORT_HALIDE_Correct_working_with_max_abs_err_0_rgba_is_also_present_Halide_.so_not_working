@@ -1,0 +1,61 @@
+Steps to use the unified_detector_wrapper API's
+-----------------------------------------------------------------
+
+1) unified_detector_wrapper.h contains the API's Exported can be used from Camera F/W to call the unifed detection methods
+
+2) unified_det_loader_example.hpp contains the function pointer declarations and unified_det_loader_example.cpp contains the function pointer definitions.
+
+3) unified_det_loader_example.cpp will invoke the exported api symblos in unified_detector_wrapper.h to invoke the API's
+
+4) To call the exported symbols in unified_detector_wrapper.h via unified_det_loader_example.cpp follow the steps.
+
+	A) Call the function load_od_lib_handle to load the library libUnifiedDetector_v1.camera.samsung.so
+		ex: unified_det_lib_handle = load_unifieddetector_lib_handle();
+
+	B) Call the function get_create_fptr to load the symbol UnifiedDetectorWrapper_create exported in unified_detector_wrapper.h. This UnifiedDetectorWrapper_create 
+		will create the UnifiedDetector instance and return the instance pointer.
+		ex: auto unified_det_create_ptr = get_create_fptr(unified_det_lib_handle);  // unified_det_lib_handle is opened library reference to load the symbols exported in unified_detector_wrapper.h
+			unified_det_handle = unified_det_create_ptr();  						  // unified_det_handle is the refernce to UnifiedDetector refernce to call the UnifiedDetector API's
+			
+	C) Create the UNIFIED_DETECTOR_MODE_WRAPPER to pass the Mode
+		ex: UNIFIED_DETECTOR_MODE_WRAPPER params;
+			params.mode = static_cast<UNIFIED_DETECTOR_MODE_WRAPPER::Mode>(0);
+		Create the UNIFIED_DETECTOR_EXECUTE_WRAPPER to pass the image biffer, width, height, image format, rotation and zoom types etc.
+			UNIFIED_DETECTOR_EXECUTE_PARAM execute_param;
+    		execute_param.imageFormat = static_cast<UNIFIED_DETECTOR_EXECUTE_PARAM::ImageFormat>(0); //ImageFormat either NV21 or RGBA. for NV21 value 0 and for RGBA value 2
+    		execute_param.image_rotation = 0;  // image_rotation angular rotation of the image.
+    		execute_param.zoom_type = 0;    // Image data is zoomed data or normal data
+    		execute_param.width = 1000;    //width is image width 
+    		execute_param.height = 1000;   //height is image height
+    		execute_param.image_buffer = image_buffer; //image_buffer is byte array of image
+			
+	D) Call the function get_initialize_fptr to load the symbol UnifiedDetectorWrapper_initialize exported in unified_detector_wrapper.h. This UnifiedDetectorWrapper_initialize
+		will call the UnifiedDetector initialize method.
+		ex: auto unified_det_initialize_ptr = get_initialize_fptr(unified_det_lib_handle);
+			bool init_status = unified_det_initialize_ptr(unified_det_handle,params,(char*)"models/");
+			
+	E) Call the function get_execute_fptr to load the symbol UnifiedDetectorWrapper_execute exported in unified_detector_wrapper.h. This UnifiedDetectorWrapper_execute will call
+		the UnifiedDetector execute method.
+		ex : auto unified_det_execute_ptr = get_execute_fptr(unified_det_lib_handle);
+			 bool execute_status = unified_det_execute_ptr(params, execute_param);
+			 
+	F) Call the function get_n_tags_fptr to load the symbol UnifiedDetectorWrapper_get_n_tags exported in unified_detector_wrapper.h. This UnifiedDetectorWrapper_get_n_tags 
+		will call the UnifiedDetector UnifiedDetectorWrapper_get_n_tags to get the number of detected boxes.
+		ex: auto get_n_tags_ptr = get_n_tags_fptr(unified_det_lib_handle);
+			int boxes = get_n_tags_ptr(unified_det_handle);
+			
+	G) Call the function get_tags_info_fptr to load the symbol UnifiedDetectorWrapper_get_tag_info exported in unified_detector_wrapper.h. This UnifiedDetectorWrapper_get_tag_info 
+		will call the UnifiedDetector get_tag_info to get the boxes info.
+		ex: auto get_tags_info_ptr = get_tags_info_fptr(unified_det_lib_handle);
+			bool extraction_staus = get_tags_info_ptr(unified_det_lib_handle, box_infos);
+
+			
+	H) Call the function get_destroy_fptr to load the symbol UnifiedDetectorWrapper_destroy exported in unified_detector_wrapper.hpp. This UnifiedDetectorWrapper_destroy will call the 
+		UnifiedDetector Destroy to delete the UnifiedDetector instance
+		ex: auto unified_det_destroy_ptr = get_destroy_fptr(unified_det_lib_handle);
+			unified_det_destroy_ptr(unified_det_handle);
+			
+	I) Call the unload_unified_det_lib_handle to close the loaded library libUnifiedDetector_v1.camera.samsung.so
+		ex: unload_unified_det_lib_handle(unified_det_lib_handle);
+
+For Refernce sharing the unifieddetectorloader_example.hpp and unifieddetectorloader_example.cpp how to call the exported API's in unified_detector_wrapper.h
