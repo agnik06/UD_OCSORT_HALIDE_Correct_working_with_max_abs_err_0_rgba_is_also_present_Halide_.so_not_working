@@ -46,12 +46,35 @@ And the Android NDK is installed (same one used for the engine):
 export PATH_TO_NDK=/path/to/android-ndk-r26d        # or your version
 ```
 
-You have **two ways** to build the `.so`. Method A is the integrated, recommended path (the engine
-actually consumes it). Method B is the quickest "just turn the `.a` into a `.so`" one-liner.
+### Two build scopes
+
+| Scope | What you get | Needs (besides the `.a` + NDK) |
+|---|---|---|
+| Produce the standalone `.so` only | `libud_halide_preprocess.so` | nothing else |
+| Rebuild the engine to consume it | `.so` + an engine that links it dynamically | the prebuilt **OpenCV** + **libc++** `.so` (see the warning in Method A) |
+
+Three ways to build, depending on scope:
+
+- **Method A** — full `ndk-build` (`Android.halide_shared.mk`): builds the `.so` **and** rewires the
+  engine to link it dynamically. *This rebuilds the engine, so it also needs the OpenCV + libc++ `.so`.*
+- **Method B** — one-line `clang++` straight from the `.a`: the `.so` only, no ndk-build.
+- **Method C** — isolated `ndk-build` (`Android.halide_only.mk`): the `.so` only, via ndk-build,
+  without touching the engine / OpenCV / STL.
 
 ---
 
 ## Method A — Build it with `ndk-build` (recommended; engine links it dynamically)
+
+> ⚠️ **Prerequisite — this rebuilds the engine, not just the `.so`.** `ndk-build` on the full
+> makefile also compiles the `UnifiedDetector.camera.samsung` and `SceneSegmenterJNI` modules, which
+> link the prebuilt **OpenCV** and **libc++** shared libraries. Those are **not in the repo right
+> now** (only the `include/` folders exist), so before Method A can succeed you must supply:
+> ```
+> android/unified_detector_jni/third_party/pcv340/libs/arm64-v8a/libOpenCv.camera.samsung.so
+> android/unified_detector_jni/third_party/stl_libc++/libs/arm64-v8a/libc++.so
+> ```
+> If you only need the `.so` itself (not the re-linked engine), use **Method B** or **Method C** —
+> they need nothing but the `.a`.
 
 This uses the two files already added to `src/jni/`:
 
@@ -86,8 +109,8 @@ android/unified_detector_jni/libs/arm64-v8a/
 ├── libud_halide_preprocess.so              ← NEW: the standalone Halide preprocessing .so
 ├── libUnifiedDetector.camera.samsung.so    ← engine; now NEEDS libud_halide_preprocess.so
 ├── libSceneSegmenterJNI.so
-├── libOpenCv.camera.samsung.so
-└── libc++.so
+├── libOpenCv.camera.samsung.so             ← prebuilt INPUT, copied through (you must supply it)
+└── libc++.so                               ← prebuilt INPUT, copied through (you must supply it)
 ```
 
 `-DUSE_HALIDE_PREPROCESS` and the `halide/include` path stay on the engine module, so the wrapper
@@ -125,6 +148,24 @@ Notes:
 - Add `-ldl`/`-pthread` only if the linker reports undefined `dlopen`/`pthread_*` symbols.
 - This produces the same `.so` as Method A's `ud_halide_preprocess` module, but does **not** rewire
   the engine — for that, use Method A (or apply the change-2/2 edit shown in `Android.halide_shared.mk`).
+
+---
+
+## Method C — Build ONLY the standalone `.so` with `ndk-build` (isolated)
+
+Same result as Method B, but through `ndk-build`, using `Android.halide_only.mk` (added in
+`src/jni/`). It builds **only** the `ud_halide_preprocess` module — no engine, no JNI, no OpenCV,
+no libc++ — so the **only** inputs are the three `.a` + the stub:
+
+```bash
+cd android/unified_detector_jni/src/jni
+$PATH_TO_NDK/ndk-build NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=./Android.halide_only.mk \
+    APP_ABI=arm64-v8a APP_PLATFORM=android-24 NDK_LIBS_OUT=./out_libs NDK_OUT=./out_obj
+# result: out_libs/arm64-v8a/libud_halide_preprocess.so
+```
+
+This does **not** rewire the engine. To make the engine consume the `.so`, apply the change-2/2 edit
+from `Android.halide_shared.mk` (or use Method A once the OpenCV/libc++ `.so` are in place).
 
 ---
 
