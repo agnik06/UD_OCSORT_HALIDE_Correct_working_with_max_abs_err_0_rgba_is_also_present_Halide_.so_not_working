@@ -31,15 +31,16 @@ LOCAL_SRC_FILES := $(THIRD_PARTY_LIBS_PATH)/stl_libc++/libs/$(TARGET_ARCH_ABI)/l
 include $(PREBUILT_SHARED_LIBRARY)
 
 #------------------------------------------------------
-# Halide AOT static archives (produced by unified_detector/halide_gen, Stage 1).
-# These remain PREBUILT_STATIC_LIBRARY here, but instead of being fused into the
-# engine they are whole-archived into the standalone ud_halide_preprocess .so below.
 include $(CLEAR_VARS)
 LOCAL_MODULE := UD_HALIDE_AOT
 LOCAL_SRC_FILES := $(ENGINE_THIRD_PARTY_LIBS_PATH)/halide/libs/$(TARGET_ARCH_ABI)/libud_preprocess_aot.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 #------------------------------------------------------
+# RGBA Halide pipeline: cvtColor (ud_rgba2bgr) + cv::resize + rotate+normalize
+# (ud_rotate_normalize). Both libs are emitted no_runtime; they share the
+# Halide runtime carried by libud_preprocess_aot.a above -- keep all three
+# linked together.
 include $(CLEAR_VARS)
 LOCAL_MODULE := UD_RGBA2BGR_AOT
 LOCAL_SRC_FILES := $(ENGINE_THIRD_PARTY_LIBS_PATH)/halide/libs/$(TARGET_ARCH_ABI)/libud_rgba2bgr_aot.a
@@ -51,32 +52,6 @@ LOCAL_MODULE := UD_ROTATE_NORMALIZE_AOT
 LOCAL_SRC_FILES := $(ENGINE_THIRD_PARTY_LIBS_PATH)/halide/libs/$(TARGET_ARCH_ABI)/libud_rotate_normalize_aot.a
 include $(PREBUILT_STATIC_LIBRARY)
 
-#======================================================================================
-# >>> HALIDE-SHARED CHANGE (1/2) — standalone Halide preprocessing shared library.
-#
-# Builds: libud_halide_preprocess.so
-#
-# LOCAL_WHOLE_STATIC_LIBRARIES pulls the three AOT archives in WHOLE, so every
-# symbol is retained and exported even though halide_so_stub.cpp references none
-# of them:
-#     ud_preprocess_aot        (NV21/NV12 fused kernel)
-#     ud_rgba2bgr_aot          (RGBA -> BGR)
-#     ud_rotate_normalize_aot  (rotate + normalize)
-#     halide_*                 (Halide runtime, carried by libud_preprocess_aot.a)
-#
-# The engine then links THIS .so dynamically (see change 2/2) instead of statically
-# fusing the .a — so the Halide preprocessing is a separate, swappable .so.
-#======================================================================================
-include $(CLEAR_VARS)
-LOCAL_MODULE := ud_halide_preprocess
-LOCAL_ARM_MODE := arm
-LOCAL_SRC_FILES := halide_so_stub.cpp
-LOCAL_WHOLE_STATIC_LIBRARIES := UD_HALIDE_AOT UD_RGBA2BGR_AOT UD_ROTATE_NORMALIZE_AOT
-LOCAL_LDLIBS := -llog
-LOCAL_LDFLAGS := -fuse-ld=lld
-LOCAL_LDFLAGS += "-Wl,-z,max-page-size=16384"
-include $(BUILD_SHARED_LIBRARY)
-
 #------------------------------------------------------
 include $(CLEAR_VARS)
 
@@ -84,21 +59,21 @@ LOCAL_MODULE := UnifiedDetector.camera.samsung
 LOCAL_ARM_MODE := arm
 
 # ifeq ($(TARGET_ARCH_ABI), arm64-v8a)
-#     LOCAL_CFLAGS += -march=armv8-a
-#     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM='"/system/lib64/libDLInterface_aidl.camera.samsung.so"'
-#     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib64/libDLInterface.camera.samsung.so"'
-#     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"libDLInterface.camera.samsung.so"' 
+	# LOCAL_CFLAGS += -march=armv8-a
+	# LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM='"/system/lib64/libDLInterface_aidl.camera.samsung.so"'
+	# LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib64/libDLInterface.camera.samsung.so"'
+	# LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"libDLInterface.camera.samsung.so"' 
 # else
-#     LOCAL_CFLAGS += -mfpu=neon -march=armv7-a -DSS_NEON_ASSEMBLY -Da32_build
-#     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM='"/system/lib/libDLInterface_aidl.camera.samsung.so"'
-#     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib/libDLInterface.camera.samsung.so"'
+	# LOCAL_CFLAGS += -mfpu=neon -march=armv7-a -DSS_NEON_ASSEMBLY -Da32_build
+	# LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM='"/system/lib/libDLInterface_aidl.camera.samsung.so"'
+	# LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib/libDLInterface.camera.samsung.so"'
 # endif
 
 ifeq ($(TARGET_ARCH_ABI), arm64-v8a)
     LOCAL_CFLAGS += -march=armv8-a
     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM_HIDL='"/system/lib64/libDLInterface_hidl.camera.samsung.so"'
     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM_AIDL='"/system/lib64/libDLInterface_aidl.camera.samsung.so"'
-    LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib64/libDLInterface.camera.samsung.so"'
+    LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib64/libDLInterface.camera.samsung.so"' 
     #LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"libDLInterface.camera.samsung.so"' 
 else
     LOCAL_CFLAGS += -mfpu=neon -march=armv7-a -DSS_NEON_ASSEMBLY -Da32_build
@@ -106,6 +81,7 @@ else
     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_SYSTEM_AIDL='"/system/lib/libDLInterface_aidl.camera.samsung.so"'
     LOCAL_CFLAGS += -DDLINTERFACELIBLOCATION_VENDOR='"/vendor/lib/libDLInterface.camera.samsung.so"'
 endif
+
 
 LOCAL_CFLAGS += -D__android__
 LOCAL_CFLAGS += -D__ISEG_VERSION__='"v1"'
@@ -144,12 +120,9 @@ endif
 
 LOCAL_SHARED_LIBRARIES += OPENCV_HQ
 LOCAL_SHARED_LIBRARIES += STL_LIBC++
-# >>> HALIDE-SHARED CHANGE (2/2) — link the Halide preprocessing DYNAMICALLY.
-# Original (static fuse) was:
-#     LOCAL_STATIC_LIBRARIES += UD_HALIDE_AOT
-#     LOCAL_STATIC_LIBRARIES += UD_RGBA2BGR_AOT
-#     LOCAL_STATIC_LIBRARIES += UD_ROTATE_NORMALIZE_AOT
-LOCAL_SHARED_LIBRARIES += ud_halide_preprocess
+LOCAL_STATIC_LIBRARIES += UD_HALIDE_AOT
+LOCAL_STATIC_LIBRARIES += UD_RGBA2BGR_AOT
+LOCAL_STATIC_LIBRARIES += UD_ROTATE_NORMALIZE_AOT
 
 HALIDE_INC_PATH := $(ENGINE_THIRD_PARTY_LIBS_PATH)/halide/include
 LOCAL_C_INCLUDES := $(OPENCV_INC_PATH) \

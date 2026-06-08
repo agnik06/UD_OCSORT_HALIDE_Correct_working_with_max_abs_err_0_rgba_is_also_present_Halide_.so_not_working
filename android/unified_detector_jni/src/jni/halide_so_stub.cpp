@@ -13,8 +13,7 @@
 // so the engine can resolve them dynamically at load time instead of statically
 // fusing the .a into libUnifiedDetector.camera.samsung.so.
 //
-// A shared module needs at least one source file; this stub provides one plus a
-// trivial, exported version probe useful for `nm`/`dlsym` sanity checks.
+
 // =============================================================================
 
 extern "C" {
